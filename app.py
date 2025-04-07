@@ -27,7 +27,7 @@ model = None
 def download_model():
     try:
         model_dir = os.path.join(os.path.dirname(__file__), 'models')
-        model_path = os.path.join(model_dir, 'face_paint_512_v2.pt')
+        model_path = os.path.join(model_dir, 'face_paint_512_v2_0.pt')
         
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
