@@ -142,4 +142,6 @@ if __name__ == '__main__':
             with open('index.html', 'r') as src:
                 f.write(src.read())
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Use gunicorn-compatible setup
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
