@@ -2,6 +2,7 @@ flask
 numpy
 opencv-python-headless
 torch
+torchvision
 Pillow
 requests
 gunicorn
