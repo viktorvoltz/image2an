@@ -38,7 +38,7 @@ def download_model():
             
             # Use a smaller, more compatible model for Render
             # This is a Hayao style model from the AnimeGANv2 project
-            url = "https://github.com/bryandlee/animegan2-pytorch/raw/main/weights/face_paint_512_v2_0.pt"
+            url = "https://github.com/bryandlee/animegan2-pytorch/raw/main/weights/face_paint_512_v2.pt"
             
             try:
                 response = requests.get(url, timeout=30)
