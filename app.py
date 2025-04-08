@@ -42,22 +42,39 @@ logger.info(f"PIL version: {Image.__version__}")
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 logger.info(f"Using device: {device}")
 
-# Initialize model using torch.hub
-try:
-    logger.info("Loading AnimeGANv2 model from torch.hub...")
-    torch.hub._validate_not_a_forked_repo=lambda a,b,c: True
-    model = torch.hub.load("bryandlee/animegan2-pytorch:main", "generator", pretrained="face_paint_512_v2").to(device)
-    model.eval()
+# Create a global variable for model and face2paint
+# This will be initialized once for each worker
+model = None
+face2paint = None
+
+def initialize_model():
+    """Initialize the model if it hasn't been loaded yet."""
+    global model, face2paint
     
-    # Also load the face2paint utility function
-    torch.hub._validate_not_a_forked_repo=lambda a,b,c: True
-    face2paint = torch.hub.load("bryandlee/animegan2-pytorch:main", "face2paint", size=512)
-    logger.info("Model loaded successfully!")
-except Exception as e:
-    logger.error(f"Error loading model from torch.hub: {e}")
-    logger.error(traceback.format_exc())
-    model = None
-    face2paint = None
+    # Skip if already initialized
+    if model is not None and face2paint is not None:
+        return True
+    
+    try:
+        logger.info("Loading AnimeGANv2 model from torch.hub...")
+        torch.hub._validate_not_a_forked_repo=lambda a,b,c: True
+        model = torch.hub.load("bryandlee/animegan2-pytorch:main", "generator", pretrained="face_paint_512_v2").to(device)
+        model.eval()
+        
+        # Also load the face2paint utility function
+        torch.hub._validate_not_a_forked_repo=lambda a,b,c: True
+        face2paint = torch.hub.load("bryandlee/animegan2-pytorch:main", "face2paint", size=512)
+        logger.info("Model loaded successfully!")
+        return True
+    except Exception as e:
+        logger.error(f"Error loading model from torch.hub: {e}")
+        logger.error(traceback.format_exc())
+        model = None
+        face2paint = None
+        return False
+
+# Initialize model at startup - each worker will execute this
+initialize_model()
 
 # Preprocess image for direct tensor input
 def preprocess_image(image):
@@ -92,14 +109,14 @@ def index():
 def convert():
     logger.info("Received conversion request")
     
+    # Make sure model is initialized (important for worker-based environments)
+    if not initialize_model():
+        logger.error("Failed to initialize model")
+        return "Failed to initialize model. Please check server logs.", 500
+    
     if 'image' not in request.files:
         logger.warning("No image provided in request")
         return "No image provided", 400
-    
-    # Check if model was loaded
-    if model is None or face2paint is None:
-        logger.error("Model not loaded, cannot process image")
-        return "Model could not be loaded. Please check server logs.", 500
     
     try:
         file = request.files['image']
@@ -133,9 +150,10 @@ def convert():
 @app.route('/health')
 def health_check():
     """Simple health check endpoint to verify the service is running"""
+    model_initialized = model is not None and face2paint is not None
     status = {
-        "status": "ok",
-        "model_loaded": model is not None and face2paint is not None,
+        "status": "ok" if model_initialized else "degraded",
+        "model_loaded": model_initialized,
         "timestamp": datetime.now().isoformat()
     }
     logger.info(f"Health check: {status}")
