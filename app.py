@@ -45,10 +45,12 @@ logger.info(f"Using device: {device}")
 # Initialize model using torch.hub
 try:
     logger.info("Loading AnimeGANv2 model from torch.hub...")
+    torch.hub._validate_not_a_forked_repo=lambda a,b,c: True
     model = torch.hub.load("bryandlee/animegan2-pytorch:main", "generator", pretrained="face_paint_512_v2").to(device)
     model.eval()
     
     # Also load the face2paint utility function
+    torch.hub._validate_not_a_forked_repo=lambda a,b,c: True
     face2paint = torch.hub.load("bryandlee/animegan2-pytorch:main", "face2paint", size=512)
     logger.info("Model loaded successfully!")
 except Exception as e:
